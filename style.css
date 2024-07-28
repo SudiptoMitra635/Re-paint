@@ -27,6 +27,7 @@ body{
     border: 2px solid white;
     border-radius: 5px;
 }
+
 .btn{
     padding: 1.1vw 2vw;
     background-color: #111011;
@@ -34,13 +35,10 @@ body{
     font-size: 1.5vw;
     border: none;
 }
+.btn:hover{
+    cursor: pointer;
+}
 #btn1{
     background-color: rgba(158, 167, 177, 0.404);
 }
-#btn1:hover{
-    cursor: pointer;
-}
-#btn2:hover,#btn3:hover, #btn4,#btn5 {
 
-    cursor: pointer;
-}
