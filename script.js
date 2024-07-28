@@ -102,29 +102,6 @@ function checkForLineIfRectIsSelected(e){
 }
 // to determine if the cursor is on a shape
 function onShape(e) {
-    
-    // for(let i = 0;i<history.length;++i){
-        
-    //     if (history[i].shape == 1) {
-    //         if (Math.abs(distance(initialX,initialY,finalX,finalY)- distance(initialX,initialY,e.x,e.y) - distance(e.x,e.y,finalX,finalY))<1 ) {
-    //             selectedShapeForMoving =  history[i]
-    //             break;
-    //         }else{
-    //             selectedShapeForMoving = undefined
-    //         }
-    //     }else{
-    //         const minx = Math.min(initialX,finalX)
-    //         const maxx = Math.max(initialX,finalX)
-    //         const miny = Math.min(initialY,finalY)
-    //         const maxy = Math.max(initialY,finalY)
-    //         if (e.x <= maxx && e.x >= minx && e.y<=maxy && e.y>= miny) {
-    //             selectedShapeForMoving = history[i]
-    //             break
-    //         }else{
-    //             selectedShapeForMoving = undefined
-    //         }
-    //     }
-    // }
     lineArray.forEach(element => {
         let {initialX, initialY,finalX,finalY} = element
         if (Math.abs(distance(initialX,initialY,finalX,finalY)- distance(initialX,initialY,e.x,e.y) - distance(e.x,e.y,finalX,finalY))<1 ) {
@@ -167,13 +144,16 @@ function onShape(e) {
 // to determine if any rectangle is inside another rectangle
 function rectInsideRect(e){
     for(let i = 0; i<rectArray.length;++i){
+        if (e.area == rectArray[i].area) {
+            continue
+        }
         let {initialX, initialY,finalX,finalY} = rectArray[i]
         const minx = Math.min(initialX,finalX)
         const maxx = Math.max(initialX,finalX)
         const miny = Math.min(initialY,finalY)
         const maxy = Math.max(initialY,finalY)
-        if (e.x <= maxx && e.x >= minx && e.y<=maxy && e.y>= miny && rectArray[i].area < rectArray[e.idx].area ) {
-            rectArray[e.idx].inner.add(rectArray[i])
+        if (e.initialX <= maxx && e.initialX >=minx && e.initialY <= maxy && e.initialY >= miny && e.finalX <= maxx && e.finalX >=minx && e.finalY <= maxy && e.finalY >= miny) {
+            rectArray[i].inner.add(e)
 
         }
     }
@@ -312,7 +292,6 @@ canvas.addEventListener("mouseup",(e)=>{
     toAvoidSinglePoint()
     todisableTracking()
     sortRectArr()
-    addToInner()
     drawShapes()
 })
 // comeback to this later
@@ -367,18 +346,13 @@ function addToInner(){
     lineArray.forEach(element => {
         lineInsideRect(element)
     });
-    for(let i = 0;i<rectArray.length;i++){
-        const {initialX,initialY,lengthX,lengthY} = rectArray[i]
-        const centre = {
-            x:initialX + (lengthX/2),
-            y:initialY + (lengthY/2),
-            idx:i
-        }
-        rectInsideRect(centre)
-    }
+    rectArray.forEach(element => {
+        rectInsideRect(element)
+    });
 }
 // paint the canvas
 function drawShapes(){
+    addToInner()
     ctx.clearRect(0,0,canvas.width,canvas.height)
     history.forEach(element => {
         const {shape} = element
