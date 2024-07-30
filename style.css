@@ -4,10 +4,11 @@
     padding: 0;
     box-sizing: border-box;
     font-family: "Edu AU VIC WA NT Hand", cursive;
+    color: white;
 }
 body{
     width: 100%;
-    overflow-y: hidden;
+    overflow: hidden;
     position: relative;
 }
 #canvas{
@@ -41,6 +42,3 @@ body{
 #btn1{
     background-color: rgba(158, 167, 177, 0.404);
 }
-
-
-

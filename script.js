@@ -1,20 +1,30 @@
-
+var action = "drawLine"
+const canvas = document.querySelector("#canvas")
+const ctx = canvas.getContext("2d")
 const line = document.querySelector("#btn1")
 const rectangle = document.querySelector("#btn2")
+const undo = document.querySelector("#btn3")
+const redo = document.querySelector("#btn4")
+const clearSlate = document.querySelector("#btn5")
+const selectionTool = document.querySelector(`#btn6`)
+const tools = [{
+    btn:line,
+    action:"drawLine"
+},{
+    btn:rectangle,
+    action:"drawRect"
+},{
+    btn:selectionTool,
+    action:"grab"
+}]
 var resize = false
-const canvas = document.querySelector("#canvas")
 canvas.height = window.innerHeight;
 canvas.width = window.innerWidth;
-const ctx = canvas.getContext("2d")
-var shape = 1
 let lastCreatedShape = undefined
 const history = []
 const rectArray = []
 const lineArray = []
-const textArray = []
-const lineArrow = []
 let deletedShapes = []
-const selectionTool = document.querySelector(`#btn6`)
 let selectedShapeForMoving = undefined
 let track = true
 let innerShapesSet = new Set()
@@ -30,6 +40,7 @@ class Particle{
         this.lengthX = undefined
         this.inner = new Set()
         this.area = undefined
+        this.lineHead = new Set()
     }
     drawLine(){
         ctx.beginPath()
@@ -46,85 +57,75 @@ class Particle{
         ctx.lineWidth = 2
         ctx.stroke();
     }
-    drawText(){
-        ctx.beginPath()
-        ctx.font = "20px Edu AU VIC WA NT Hand"
-        ctx.fillText("Hello World",this.initialX,this.initialY)
-        ctx.fillStyle = "white"
-        ctx.stroke()
-    }
     
 }
-
+// *****************************************************************************************************************
 // handle resize
 window.addEventListener("resize",()=>{
     canvas.height = window.innerHeight;
     canvas.width = window.innerWidth;
     drawShapes();
 })
-
+// function to remove btn color 
+function removeBtnColor(){
+    const length = tools.length
+    for(let i = 0;i<length;++i){
+        if (tools[i].action != action) {
+            tools[i].btn.style.backgroundColor = "#111011"
+        }
+    }
+}
+// function to color btn 
+function changeBtnColor(){
+    switch (action) {
+        case "drawLine":
+            line.style.backgroundColor = "rgba(158, 167, 177, 0.404)"
+            removeBtnColor()
+            break;
+        case "drawRect":
+            rectangle.style.backgroundColor = "rgba(158, 167, 177, 0.404)"
+            removeBtnColor()
+            break;
+        case "grab":
+            selectionTool.style.backgroundColor = "rgba(158, 167, 177, 0.404)"
+            removeBtnColor()
+            break;
+    }
+}
 // shape selection function and grab shape function
 line.addEventListener("click",()=>{
     shape = 1
-    line.style.backgroundColor = "rgba(158, 167, 177, 0.404)"
-    selectionTool.style.backgroundColor = "#111011"
-    rectangle.style.backgroundColor = "#111011"
+    action = "drawLine"
+    changeBtnColor()
 })
 rectangle.addEventListener("click",()=>{
     shape = 2
-    line.style.backgroundColor = "#111011"
-    selectionTool.style.backgroundColor = "#111011"
-    rectangle.style.backgroundColor = "rgba(158, 167, 177, 0.404)"
+    action = "drawRect"
+    changeBtnColor() 
 })
 selectionTool.addEventListener("click",()=>{
     shape = undefined
-    line.style.backgroundColor = "#111011"
-    rectangle.style.backgroundColor = "#111011"
-    selectionTool.style.backgroundColor = "rgba(158, 167, 177, 0.404)"
+    action = "grab"
+    changeBtnColor()
 })
 
 
-
+// ******************************************************************************************************************
 // to find the distance between two points
 function distance(x1,y1,x2,y2){
     return Math.sqrt(Math.pow(x2-x1,2) + Math.pow(y2-y1,2))
 }
 // check for line if rectangle is selected to give priority to lines
 function checkForLineIfRectIsSelected(e){
-    history.forEach(element => {
-        let {initialX, initialY,finalX,finalY} = element
-        if (element.shape == 1) {
-            if (Math.abs(distance(initialX,initialY,finalX,finalY)- distance(initialX,initialY,e.x,e.y) - distance(e.x,e.y,finalX,finalY))<1 ) {
-                selectedShapeForMoving =  element
-            }
-        }
-    });
-}
-// to determine if the cursor is on a shape
-function onShape(e) {
     lineArray.forEach(element => {
         let {initialX, initialY,finalX,finalY} = element
         if (Math.abs(distance(initialX,initialY,finalX,finalY)- distance(initialX,initialY,e.x,e.y) - distance(e.x,e.y,finalX,finalY))<1 ) {
-            selectedShapeForMoving = element
-            return
-        }else{
-            selectedShapeForMoving = undefined
+            selectedShapeForMoving =  element
         }
     });
-    rectArray.forEach(element => {
-        let {initialX, initialY,finalX,finalY} = element
-        const minx = Math.min(initialX,finalX)
-        const maxx = Math.max(initialX,finalX)
-        const miny = Math.min(initialY,finalY)
-        const maxy = Math.max(initialY,finalY)
-        if (e.x <= maxx && e.x >= minx && e.y<=maxy && e.y>= miny) {
-            selectedShapeForMoving = element
-            console.log(`inside foreach rect`)
-            return
-        }else{
-            selectedShapeForMoving = undefined
-        }
-    });
+}
+// to determine if the cursor is on a rectangle
+function onRectangle(e){
     for(let i = 0;i<rectArray.length;++i){
         let {initialX, initialY,finalX,finalY} = rectArray[i]
         const minx = Math.min(initialX,finalX)
@@ -133,13 +134,22 @@ function onShape(e) {
         const maxy = Math.max(initialY,finalY)
         if (e.x <= maxx && e.x >= minx && e.y<=maxy && e.y>= miny) {
             selectedShapeForMoving = rectArray[i]
-            console.log(`inside foreach rect`)
             return
         }else{
             selectedShapeForMoving = undefined
         }
     }
-
+}
+// to determine if cursor is on a line
+function onLine(e){
+    
+    for(let i = 0;i<lineArray.length;++i){
+        let {initialX, initialY,finalX,finalY} = lineArray[i]
+        if (Math.abs(distance(initialX,initialY,finalX,finalY)- distance(initialX,initialY,e.x,e.y) - distance(e.x,e.y,finalX,finalY))<1 ) {
+            selectedShapeForMoving = lineArray[i]
+            break
+        }
+    }
 }
 // to determine if any rectangle is inside another rectangle
 function rectInsideRect(e){
@@ -180,21 +190,89 @@ function giveShape(currentShape,e){
     currentShape.lengthY = e.y - initialY;
     currentShape.area = currentShape.lengthX * currentShape.lengthY
 }
-// sort the rectArray
+// sort the rectArray base on area
 function sortRectArr(){
     rectArray.sort((a,b) => a.area - b.area)
 }
-
-
-
+// to avoid single points 
+function toAvoidSinglePoint(){
+    if (history.length>0) {
+        if (history[history.length-1].lengthX == undefined && history[history.length-1].lengthY == undefined) {
+            const {shape} = history[history.length-1]
+            switch (shape){
+                case "drawLine":
+                    lineArray.pop()
+                    history.pop() 
+                    break;
+                case "drawRect":
+                    rectArray.pop()
+                    history.pop() 
+                    break;
+            }
+            
+        }
+    }
+    console.log(history)
+    
+}
+// to stop tracking element 
+function todisableTracking(){
+    selectedShapeForMoving = undefined
+    track = true
+    document.body.style.cursor = "default"
+}
+// undo and redo functionality
+undo.addEventListener("click",()=>{
+    
+    if (history.length > 0) {
+        const temp = history.pop();
+        deletedShapes.push(temp);
+        drawShapes();
+    }
+    drawShapes()
+})
+redo.addEventListener("click",()=>{
+    
+    if (deletedShapes.length > 0) {
+        const temp = deletedShapes.pop();
+        history.push(temp);
+    }
+    drawShapes()
+})
+// to clear the whole slate
+clearSlate.addEventListener("click",()=>{
+    lineArray.splice(0,lineArray.length)
+    rectArray.splice(0,rectArray.length)
+    history.splice(0,history.length)
+    drawShapes()
+})
+// add children shapes to inner property
+function addToInner(){
+    lineArray.forEach(element => {
+        lineInsideRect(element)
+    });
+    rectArray.forEach(element => {
+        rectInsideRect(element)
+    });
+}
+// made to check if the current coordiante has any particle 
+function onShape(e){
+    onRectangle(e)
+    onLine(e)
+    if (selectedShapeForMoving) {
+        document.body.style.cursor = "grab"
+    }else{
+        document.body.style.cursor = "default"
+    }
+}
+// *******************************************************************************************************************
 
 // create update and stop tracking element
 canvas.addEventListener("mousedown",(e)=>{
     if (e.button==0) {
         resize = true
-
         // stop tracking other elements by turning of tracking 
-        if (shape == undefined) {
+        if (action == "grab") {
             track = false
         }
         // delete the redo array
@@ -202,45 +280,28 @@ canvas.addEventListener("mousedown",(e)=>{
             deletedShapes.splice(0,deletedShapes.length)
         }
         // to create a particle
-        if (shape != undefined) {
-            switch (shape) {
-                case 1:
-                    lineArray.push(new Particle(1,e))
+        if (action != "grab") {
+            switch (action) {
+                case "drawLine":
+                    lineArray.push(new Particle(action,e))
                     lastCreatedShape = lineArray[lineArray.length -1]
                     history.push(lastCreatedShape)
                     break;
-                case 2:
-                    rectArray.push(new Particle(2,e))
+                case "drawRect":
+                    rectArray.push(new Particle(action,e))
                     lastCreatedShape = rectArray[rectArray.length - 1]
                     history.push(lastCreatedShape)
                     break;
-            }
-
-            
+            }   
         }
-        
     }
- 
 })
 canvas.addEventListener("mousemove",(e)=>{
-
-    // made to check if the current coordiante has any particle // check this later
-    if (shape == undefined && track == true) {
+    if (track== true && action=="grab") {
         onShape(e)
-        if(selectedShapeForMoving){
-            document.body.style.cursor = "grab"
-            if (selectedShapeForMoving.shape == 2) {
-                checkForLineIfRectIsSelected(e)
-            } 
-        }else{
-            
-            document.body.style.cursor = "default"
-        }
-        console.log(selectedShapeForMoving)
     }
-
     // move elements with all other elements that are inside that elelment
-    if (shape == undefined && track == false) {
+    if (action == "grab" && track == false) {
         if (selectedShapeForMoving) {
             selectedShapeForMoving.initialX +=e.movementX
             selectedShapeForMoving.initialY += e.movementY
@@ -252,123 +313,41 @@ canvas.addEventListener("mousemove",(e)=>{
                 innerShape.finalX += e.movementX
                 innerShape.finalY += e.movementY
             }
-            
         }
     }
-
     // give initial shape to particle
-    if (resize == true && shape != undefined) {
+    if (resize == true && action != "grab") {
         giveShape(history[history.length-1],e)
     }
-
-    
     drawShapes()
 })
 canvas.addEventListener("mouseup",(e)=>{
     resize = false
-    // to avoid single points 
-    function toAvoidSinglePoint(){
-        if (history[history.length-1].lengthX == 0 && history[history.length-1].lengthY == 0) {
-            const {shape} = history[history.length-1]
-            switch (shape){
-                case 1:
-                    lineArray.pop()
-                    break;
-                case 2:
-                    rectArray.pop()
-                    break;
-            }
-            history.pop()
-            
-        }
-    }
-    // to stop tracking element 
-    function todisableTracking(){
-        selectedShapeForMoving = undefined
-        track = true
-        document.body.style.cursor = "default"
-    }
-
+    addToInner()
     toAvoidSinglePoint()
     todisableTracking()
     sortRectArr()
     drawShapes()
 })
-// comeback to this later
-canvas.addEventListener("dblclick",(e)=>{
-    if (shape != undefined) {
-        const temp = document.createElement("input")
-        temp.setAttribute("type","text")
-        temp.style.position = "absolute"
 
-        shapesArray.push(new Particle(3,e))
-        if (deletedShapes.length>0) {
-            deletedShapes.splice(0,deletedShapes.length)
-        }
-    }
-    drawShapes()
-})
+// ********************************************************************************************************************
 
-
-// undo and redo functionality
-const undo = document.querySelector("#btn3")
-undo.addEventListener("click",()=>{
-    
-    if (history.length > 0) {
-        const temp = history.pop();
-        deletedShapes.push(temp);
-        drawShapes();
-    }
-    drawShapes()
-})
-const redo = document.querySelector("#btn4")
-redo.addEventListener("click",()=>{
-    
-    if (deletedShapes.length > 0) {
-        const temp = deletedShapes.pop();
-        history.push(temp);
-    }
-    drawShapes()
-})
-
-// to clear the whole slate
-const clearSlate = document.querySelector("#btn5")
-clearSlate.addEventListener("click",()=>{
-    lineArray.splice(0,lineArray.length)
-    rectArray.splice(0,rectArray.length)
-    textArray.splice(0,textArray.length)
-    history.splice(0,history.length)
-    drawShapes()
-})
-
-// add children shapes to inner property
-function addToInner(){
-    lineArray.forEach(element => {
-        lineInsideRect(element)
-    });
-    rectArray.forEach(element => {
-        rectInsideRect(element)
-    });
-}
 // paint the canvas
 function drawShapes(){
-    addToInner()
+    // console.log(history)
     ctx.clearRect(0,0,canvas.width,canvas.height)
     history.forEach(element => {
         const {shape} = element
         switch(shape){
-            case 1:
+            case "drawLine":
                 element.drawLine()
                 break;
-            case 2:
+            case "drawRect":
                 element.drawRectangle()
                 break;
-            case 3:
-                element.drawText()
-                break
         }
     });
-    console.log(rectArray)
+    
     
 }
 drawShapes();
