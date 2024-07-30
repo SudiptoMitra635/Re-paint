@@ -17,6 +17,7 @@ const tools = [{
     btn:selectionTool,
     action:"grab"
 }]
+const buffer = 45
 var resize = false
 canvas.height = window.innerHeight;
 canvas.width = window.innerWidth;
@@ -40,7 +41,7 @@ class Particle{
         this.lengthX = undefined
         this.inner = new Set()
         this.area = undefined
-        this.lineHead = new Set()
+        this.connectedLines = new Set()
     }
     drawLine(){
         ctx.beginPath()
@@ -108,8 +109,6 @@ selectionTool.addEventListener("click",()=>{
     action = "grab"
     changeBtnColor()
 })
-
-
 // ******************************************************************************************************************
 // to find the distance between two points
 function distance(x1,y1,x2,y2){
@@ -189,6 +188,8 @@ function giveShape(currentShape,e){
     currentShape.lengthX = e.x - initialX;
     currentShape.lengthY = e.y - initialY;
     currentShape.area = currentShape.lengthX * currentShape.lengthY
+    
+    
 }
 // sort the rectArray base on area
 function sortRectArr(){
@@ -265,8 +266,87 @@ function onShape(e){
         document.body.style.cursor = "default"
     }
 }
+// same as on rectangle funciton but also checks if point is near or inside a rectangle
+function lineNearRectangle(e){
+    for(let i = 0;i<rectArray.length;++i){
+        let {initialX, initialY,finalX,finalY} = rectArray[i]
+        const minx = Math.min(initialX,finalX)
+        const maxx = Math.max(initialX,finalX)
+        const miny = Math.min(initialY,finalY)
+        const maxy = Math.max(initialY,finalY)
+        if (e.initialX <= maxx+buffer && e.initialX >= minx - buffer && e.initialY<=maxy +buffer && e.initialY >= miny-buffer){
+            rectArray[i].connectedLines.add({
+                connectedLine:e,
+                point:"initial"
+            })
+        }else if(e.finalX <= maxx+buffer && e.finalX >= minx - buffer && e.finalY<=maxy +buffer && e.finalY >= miny-buffer){
+            rectArray[i].connectedLines.add({
+                connectedLine:e,
+                point:"final"
+                
+            })
+        }
+    }
+}
+// check for any line near a created rectangle
+function rectNearLine(e){
+    for(let i = 0;i<lineArray.length;++i){
+        
+        const {initialX,initialY,finalX,finalY} = e
+        const minx = Math.min(initialX,finalX)
+        const maxx = Math.max(initialX,finalX)
+        const miny = Math.min(initialY,finalY)
+        const maxy = Math.max(initialY,finalY)
+        console.log(e)
+        if (lineArray[i].initialY >= miny - buffer && lineArray[i].initialY <= maxy + buffer &&
+            lineArray[i].initialX >= minx - buffer && lineArray[i].initialX <= maxx + buffer){
+            e.connectedLines.add({
+                connectedLine:lineArray[i],
+                point:"initial"
+            })
+        }else if(lineArray[i].finalY >= miny - buffer && lineArray[i].finalY <= maxy + buffer &&
+            lineArray[i].finalX >= minx - buffer && lineArray[i].finalX <= maxx + buffer){
+            e.connectedLines.add({
+                connectedLine:lineArray[i],
+                point:"final"
+            })
+            console.log(`inside`)
+        }
+    }
+}
+// move selected element
+function moveSelectedElement(e){
+    selectedShapeForMoving.initialX +=e.movementX
+    selectedShapeForMoving.initialY += e.movementY
+    selectedShapeForMoving.finalX += e.movementX
+    selectedShapeForMoving.finalY += e.movementY
+}
+// move elements with all other elements that are inside that element
+function moveInnnerElements(e){
+    for(const innerShape of selectedShapeForMoving.inner ){
+        innerShape.initialX +=e.movementX
+        innerShape.initialY += e.movementY
+        innerShape.finalX += e.movementX
+        innerShape.finalY += e.movementY
+    }
+}
+// move lines connected to the rectangle
+function moveConnectedLines(e){
+        for(const singleConnectedLine of selectedShapeForMoving.connectedLines ){
+            console.log(selectedShapeForMoving)
+            console.log(singleConnectedLine)
+            if (singleConnectedLine.point == "initial") {
+                singleConnectedLine.connectedLine.initialX += e.movementX
+                singleConnectedLine.connectedLine.initialY += e.movementY
+                
+            }else if(singleConnectedLine.point == "final"){
+                
+                singleConnectedLine.connectedLine.finalX += e.movementX
+                singleConnectedLine.connectedLine.finalY += e.movementY
+            }
+        }
+}
 // *******************************************************************************************************************
-
 // create update and stop tracking element
 canvas.addEventListener("mousedown",(e)=>{
     if (e.button==0) {
@@ -297,21 +377,18 @@ canvas.addEventListener("mousedown",(e)=>{
     }
 })
 canvas.addEventListener("mousemove",(e)=>{
+    // check if cursor is on a shape
     if (track== true && action=="grab") {
         onShape(e)
     }
-    // move elements with all other elements that are inside that elelment
+    // move elements with all other elements that are inside that elelment and connected lines too
     if (action == "grab" && track == false) {
+
         if (selectedShapeForMoving) {
-            selectedShapeForMoving.initialX +=e.movementX
-            selectedShapeForMoving.initialY += e.movementY
-            selectedShapeForMoving.finalX += e.movementX
-            selectedShapeForMoving.finalY += e.movementY
-            for(const innerShape of selectedShapeForMoving.inner ){
-                innerShape.initialX +=e.movementX
-                innerShape.initialY += e.movementY
-                innerShape.finalX += e.movementX
-                innerShape.finalY += e.movementY
+            moveSelectedElement(e)
+            moveInnnerElements(e)
+            if (selectedShapeForMoving.shape == "drawRect" && lineArray.length>0) {
+                moveConnectedLines(e)
             }
         }
     }
@@ -323,15 +400,18 @@ canvas.addEventListener("mousemove",(e)=>{
 })
 canvas.addEventListener("mouseup",(e)=>{
     resize = false
-    addToInner()
     toAvoidSinglePoint()
+    if (action == "drawLine") {
+        lineNearRectangle(history[history.length-1])
+    }else if (action == "drawRect") {
+        rectNearLine(history[history.length-1])
+    }
+    addToInner()
     todisableTracking()
     sortRectArr()
     drawShapes()
 })
-
 // ********************************************************************************************************************
-
 // paint the canvas
 function drawShapes(){
     // console.log(history)
@@ -350,4 +430,4 @@ function drawShapes(){
     
     
 }
-drawShapes();
+drawShapes()
