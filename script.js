@@ -156,6 +156,7 @@ function rectInsideRect(e){
         if (e.area == rectArray[i].area) {
             continue
         }
+        rectArray[i].inner.clear()
         let {initialX, initialY,finalX,finalY} = rectArray[i]
         const minx = Math.min(initialX,finalX)
         const maxx = Math.max(initialX,finalX)
@@ -170,6 +171,7 @@ function rectInsideRect(e){
 // to determine if any line is inside another rectangle
 function lineInsideRect(e){
     for(let i =0;i<rectArray.length;i++){
+        rectArray[i].inner.clear()
         const {initialX,initialY,finalX,finalY} = rectArray[i]
         const minx = Math.min(initialX,finalX)
         const maxx = Math.max(initialX,finalX)
@@ -269,12 +271,16 @@ function onShape(e){
 // same as on rectangle funciton but also checks if point is near or inside a rectangle
 function lineNearRectangle(e){
     for(let i = 0;i<rectArray.length;++i){
+        rectArray[i].connectedLines.clear()
         let {initialX, initialY,finalX,finalY} = rectArray[i]
         const minx = Math.min(initialX,finalX)
         const maxx = Math.max(initialX,finalX)
         const miny = Math.min(initialY,finalY)
         const maxy = Math.max(initialY,finalY)
-        if (e.initialX <= maxx+buffer && e.initialX >= minx - buffer && e.initialY<=maxy +buffer && e.initialY >= miny-buffer){
+        if ((e.initialX <= maxx+buffer && e.initialX >= minx - buffer && e.initialY<=maxy +buffer && e.initialY >= miny-buffer)&&(e.finalX <= maxx+buffer && e.finalX >= minx - buffer && e.finalY<=maxy +buffer && e.finalY >= miny-buffer)) {
+            continue;
+        }
+        else if (e.initialX <= maxx+buffer && e.initialX >= minx - buffer && e.initialY<=maxy +buffer && e.initialY >= miny-buffer){
             rectArray[i].connectedLines.add({
                 connectedLine:e,
                 point:"initial"
@@ -291,14 +297,19 @@ function lineNearRectangle(e){
 // check for any line near a created rectangle
 function rectNearLine(e){
     for(let i = 0;i<lineArray.length;++i){
-        
+        e.connectedLines.clear()
         const {initialX,initialY,finalX,finalY} = e
         const minx = Math.min(initialX,finalX)
         const maxx = Math.max(initialX,finalX)
         const miny = Math.min(initialY,finalY)
         const maxy = Math.max(initialY,finalY)
-        console.log(e)
-        if (lineArray[i].initialY >= miny - buffer && lineArray[i].initialY <= maxy + buffer &&
+        if ((lineArray[i].initialY >= miny - buffer && lineArray[i].initialY <= maxy + buffer &&
+            lineArray[i].initialX >= minx - buffer && lineArray[i].initialX <= maxx + buffer)&&
+            (lineArray[i].finalY >= miny - buffer && lineArray[i].finalY <= maxy + buffer &&
+            lineArray[i].finalX >= minx - buffer && lineArray[i].finalX <= maxx + buffer)){
+                continue
+        }
+        else if (lineArray[i].initialY >= miny - buffer && lineArray[i].initialY <= maxy + buffer &&
             lineArray[i].initialX >= minx - buffer && lineArray[i].initialX <= maxx + buffer){
             e.connectedLines.add({
                 connectedLine:lineArray[i],
@@ -310,7 +321,6 @@ function rectNearLine(e){
                 connectedLine:lineArray[i],
                 point:"final"
             })
-            console.log(`inside`)
         }
     }
 }
@@ -357,7 +367,7 @@ canvas.addEventListener("mousedown",(e)=>{
         }
         // delete the redo array
         if (deletedShapes.length>0) {
-            deletedShapes.splice(0,deletedShapes.length)
+            
         }
         // to create a particle
         if (action != "grab") {
@@ -373,8 +383,9 @@ canvas.addEventListener("mousedown",(e)=>{
                     history.push(lastCreatedShape)
                     break;
             }   
-        }
+        }      
     }
+    addToInner()
 })
 canvas.addEventListener("mousemove",(e)=>{
     // check if cursor is on a shape
@@ -403,9 +414,19 @@ canvas.addEventListener("mouseup",(e)=>{
     toAvoidSinglePoint()
     if (action == "drawLine") {
         lineNearRectangle(history[history.length-1])
-    }else if (action == "drawRect") {
+    }
+    else if (action == "drawRect") {
         rectNearLine(history[history.length-1])
     }
+    else if((action == "grab" && selectedShapeForMoving != undefined)){
+        if (selectedShapeForMoving.shape == "drawLine") {
+            lineNearRectangle(selectedShapeForMoving)
+        }else{
+            rectNearLine(selectedShapeForMoving)
+        }
+        
+    }
+    
     addToInner()
     todisableTracking()
     sortRectArr()
