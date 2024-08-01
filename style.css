@@ -26,10 +26,11 @@ body{
     border-radius: 5px;
 }
 .btn{
-    padding: 1.1vw 2vw;
+    padding: 1.05vw 2vw;
     background-color: #111011;
     color: whitesmoke;
-    font-size: 1.5vw;
+    font-size: 1.05vw;
+    font-weight: 700;
     border: none;
 }
 .btn:hover{

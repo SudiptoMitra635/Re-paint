@@ -156,7 +156,7 @@ function rectInsideRect(e){
         if (e.area == rectArray[i].area) {
             continue
         }
-        rectArray[i].inner.clear()
+        // rectArray[i].inner.clear()
         let {initialX, initialY,finalX,finalY} = rectArray[i]
         const minx = Math.min(initialX,finalX)
         const maxx = Math.max(initialX,finalX)
@@ -171,7 +171,7 @@ function rectInsideRect(e){
 // to determine if any line is inside another rectangle
 function lineInsideRect(e){
     for(let i =0;i<rectArray.length;i++){
-        rectArray[i].inner.clear()
+        // rectArray[i].inner.clear()
         const {initialX,initialY,finalX,finalY} = rectArray[i]
         const minx = Math.min(initialX,finalX)
         const maxx = Math.max(initialX,finalX)
@@ -296,8 +296,8 @@ function lineNearRectangle(e){
 }
 // check for any line near a created rectangle
 function rectNearLine(e){
+    e.connectedLines.clear()
     for(let i = 0;i<lineArray.length;++i){
-        e.connectedLines.clear()
         const {initialX,initialY,finalX,finalY} = e
         const minx = Math.min(initialX,finalX)
         const maxx = Math.max(initialX,finalX)
@@ -356,6 +356,7 @@ function moveConnectedLines(e){
             }
         }
 }
+
 // *******************************************************************************************************************
 // create update and stop tracking element
 canvas.addEventListener("mousedown",(e)=>{
@@ -383,7 +384,18 @@ canvas.addEventListener("mousedown",(e)=>{
                     history.push(lastCreatedShape)
                     break;
             }   
-        }      
+        }
+        if((action == "grab" && selectedShapeForMoving != undefined)){
+            selectedShapeForMoving.connectedLines.clear()
+            selectedShapeForMoving.inner.clear()
+            addToInner()
+            if (selectedShapeForMoving.shape == "drawLine") {
+
+                lineNearRectangle(selectedShapeForMoving)
+            }else{
+                rectNearLine(selectedShapeForMoving)
+            }
+        }
     }
     addToInner()
 })
@@ -418,16 +430,7 @@ canvas.addEventListener("mouseup",(e)=>{
     else if (action == "drawRect") {
         rectNearLine(history[history.length-1])
     }
-    else if((action == "grab" && selectedShapeForMoving != undefined)){
-        if (selectedShapeForMoving.shape == "drawLine") {
-            lineNearRectangle(selectedShapeForMoving)
-        }else{
-            rectNearLine(selectedShapeForMoving)
-        }
-        
-    }
     
-    addToInner()
     todisableTracking()
     sortRectArr()
     drawShapes()
@@ -448,7 +451,5 @@ function drawShapes(){
                 break;
         }
     });
-    
-    
 }
 drawShapes()
